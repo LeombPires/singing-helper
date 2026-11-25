@@ -39,20 +39,23 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(32px,6vw,4
 .now b{font-family:Fraunces,Georgia,serif;font-size:28px;line-height:1;color:#fff;font-weight:600;min-width:2.4em}
 .felt{height:10px;background:linear-gradient(180deg,#b3252d,var(--felt));border-radius:3px 3px 0 0}
 
-/* Teclas: 8 brancas (C a C) e 5 pretas por cima */
-.keys{position:relative;height:clamp(200px,42vw,320px);display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;
+/* Teclas: da tónica à tónica de cima (8 ou 9 brancas, conforme a escala), pretas por cima. --w = número de brancas */
+.keys{position:relative;height:clamp(200px,42vw,320px);display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;--w:8;
   touch-action:none;user-select:none;-webkit-user-select:none}
 .key{position:relative;border:0;padding:0 0 12px;font:inherit;cursor:pointer;display:flex;align-items:flex-end;justify-content:center}
 .white{background:linear-gradient(180deg,#ebe3d3 0,var(--ivory) 10%,var(--ivory) 88%,#e9dfcb);color:#6d5f50;border-radius:0 0 8px 8px;
   box-shadow:inset 0 -6px 0 #d8ccb5,0 2px 0 rgba(0,0,0,.4);font-weight:600;font-size:15px;transition:transform .05s}
 .white.down{background:var(--ivory-down);box-shadow:inset 0 -2px 0 #cdbfa5,0 1px 0 rgba(0,0,0,.4);transform:translateY(2px);color:var(--accent)}
-.black{position:absolute;top:0;height:60%;width:calc(100% / 8 * .6);z-index:2;background:linear-gradient(180deg,#2c2730,var(--ebony) 70%,#0c0a0e);
+.black{position:absolute;top:0;height:60%;width:calc(100% / var(--w) * .6);z-index:2;background:linear-gradient(180deg,#2c2730,var(--ebony) 70%,#0c0a0e);
   border-radius:0 0 6px 6px;color:#bfb4c6;font-size:12px;font-weight:500;padding-bottom:10px;
   box-shadow:inset 0 -8px 0 #000,inset 1px 0 0 rgba(255,255,255,.08),0 3px 4px rgba(0,0,0,.45);transition:transform .05s}
 .black.down{background:var(--ebony-down);box-shadow:inset 0 -3px 0 #000,0 1px 2px rgba(0,0,0,.4);transform:translateY(2px);color:#fff}
 .key:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
 .key .kb{display:block;font-size:11px;font-weight:400;opacity:.55;margin-top:2px}
 .key span{display:flex;flex-direction:column;align-items:center;line-height:1.1;pointer-events:none}
+/* Notas da escala: um ponto vermelho por cima do nome (o espaço do ponto existe em todas, para os nomes ficarem alinhados) */
+.key span::before{content:"";width:7px;height:7px;border-radius:50%;margin-bottom:6px}
+.key.in-scale span::before{background:var(--accent)}
 
 /* Controlos por baixo */
 .controls{display:flex;align-items:center;gap:14px 20px;flex-wrap:wrap;margin-top:22px}
@@ -63,13 +66,13 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(32px,6vw,4
 .repeat:disabled{opacity:.4;cursor:not-allowed}
 .repeat:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .status{color:var(--muted);font-size:15px}
-/* Oitava: − C4–C5 + */
+/* Escala: − C major + */
 .octave{display:inline-flex;align-items:center;gap:6px;margin-left:auto}
 .octave button{width:48px;height:48px;border-radius:50%;border:2px solid var(--ink);background:transparent;color:var(--ink);
   font:600 24px/1 Inter,system-ui,sans-serif;cursor:pointer;display:grid;place-items:center}
 .octave button:disabled{opacity:.3;cursor:not-allowed}
 .octave button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
-.octave output{min-width:5.6em;text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}
+.octave output{min-width:6.4em;text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}
 .octave output b{display:block;font-family:Fraunces,Georgia,serif;font-size:22px;line-height:1.1}
 .octave output small{color:var(--muted);font-size:13px}
 @media (max-width:600px){.octave{margin-left:0}}
@@ -96,37 +99,56 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(32px,6vw,4
       <span id="autoLabel">Autoplay</span>
     </button>
     <span class="status" id="status" aria-live="polite"></span>
-    <div class="octave" role="group" aria-label="Octave">
-      <button id="octDown" aria-label="One octave lower">−</button>
-      <output id="octLabel" aria-live="polite"><b>C4–C5</b><small>octave</small></output>
-      <button id="octUp" aria-label="One octave higher">+</button>
+    <div class="octave" role="group" aria-label="Scale">
+      <button id="rootDown" aria-label="Scale down a semitone">−</button>
+      <output id="rootLabel" aria-live="polite"><b>C major</b><small>C4–C5</small></output>
+      <button id="rootUp" aria-label="Scale up a semitone">+</button>
     </div>
   </div>
 </main>
 
 <script>
 {
-// Notas da oitava: nome, semitons acima do C da oitava escolhida, branca ou preta, tecla do computador
-const NOTES = [
-  ['C', 0, 'w', 'a'], ['C♯', 1, 'b', 'w'], ['D', 2, 'w', 's'], ['D♯', 3, 'b', 'e'], ['E', 4, 'w', 'd'],
-  ['F', 5, 'w', 'f'], ['F♯', 6, 'b', 't'], ['G', 7, 'w', 'g'], ['G♯', 8, 'b', 'y'], ['A', 9, 'w', 'h'],
-  ['A♯', 10, 'b', 'u'], ['B', 11, 'w', 'j'], ['C', 12, 'w', 'k'],
-];
-// Oitava escolhida com − e +: 4 quer dizer C4 a C5 (o C central do piano). Vai de C2 a C7
-const C4 = 261.63, OCT_MIN = 2, OCT_MAX = 6;
-let octave = 4;
-const freqOf = st => C4 * 2 ** (octave - 4 + st / 12);
+// As notas trabalham com números MIDI: 60 = C4 (o C central do piano), cada semitom soma 1
+const NAMES = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+const isBlack = m => [1, 3, 6, 8, 10].includes(((m % 12) + 12) % 12);
+const freqOf = m => 440 * 2 ** ((m - 69) / 12);
+const nameOf = m => NAMES[m % 12] + (Math.floor(m / 12) - 1);
+const pitchOf = m => NAMES[m % 12];
 
-// Desenhar as teclas: as pretas ficam por cima, entre as brancas
+// Escala maior a partir da tónica: tom, tom, meio-tom, tom, tom, tom, meio-tom
+const SCALE = [0, 2, 4, 5, 7, 9, 11, 12];
+// − e + sobem e descem a escala meio-tom de cada vez. Vai de C2 maior a C6 maior
+const ROOT_MIN = 36, ROOT_MAX = 84;
+let root = 60;
+// Teclas do computador: A W S E D F T G Y H U J K tocam da tónica até à tónica de cima
+const KB = ['a', 'w', 's', 'e', 'd', 'f', 't', 'g', 'y', 'h', 'u', 'j', 'k'];
+
+// ============ TECLADO ============
+// Mostra da tónica até à tónica de cima; se uma ponta calhar numa preta, acrescenta a branca ao lado para o piano não começar nem acabar numa preta
 const keysEl = document.getElementById('keys');
-let whiteIndex = 0;
-keysEl.innerHTML = NOTES.map(([name, st, kind, kb]) => {
-  const label = `<span>${name}${st === 12 ? '<sup>′</sup>' : ''}<small class="kb">${kb.toUpperCase()}</small></span>`;
-  if (kind === 'w') { whiteIndex++; return `<button class="key white" data-st="${st}" aria-label="${name}${st === 12 ? ' (high)' : ''}">${label}</button>`; }
-  // a preta fica centrada na junta entre a branca anterior e a seguinte
-  const left = `calc(100% / 8 * ${whiteIndex} - (100% / 8 * .3))`;
-  return `<button class="key black" data-st="${st}" style="left:${left}" aria-label="${name}">${label}</button>`;
-}).join('');
+function drawKeys() {
+  let lo = root, hi = root + 12;
+  if (isBlack(lo)) lo--;
+  if (isBlack(hi)) hi++;
+  const whites = [];
+  for (let m = lo; m <= hi; m++) if (!isBlack(m)) whites.push(m);
+  const W = whites.length;
+  keysEl.style.gridTemplateColumns = `repeat(${W}, minmax(0, 1fr))`;
+  keysEl.style.setProperty('--w', W);
+  let html = '', wi = 0;
+  for (let m = lo; m <= hi; m++) {
+    const off = m - root;
+    const inScale = SCALE.includes(off);
+    const kb = off >= 0 && off <= 12 ? `<small class="kb">${KB[off].toUpperCase()}</small>` : '';
+    const label = `<span>${pitchOf(m)}${kb}</span>`;
+    const cls = `key ${isBlack(m) ? 'black' : 'white'}${inScale ? ' in-scale' : ''}`;
+    if (!isBlack(m)) { wi++; html += `<button class="${cls}" data-m="${m}" aria-label="${nameOf(m)}">${label}</button>`; }
+    // a preta fica centrada na junta entre a branca anterior e a seguinte
+    else html += `<button class="${cls}" data-m="${m}" style="left:calc(100% / ${W} * ${wi} - (100% / ${W} * .3))" aria-label="${nameOf(m)}">${label}</button>`;
+  }
+  keysEl.innerHTML = html;
+}
 
 // ============ SOM (Web Audio, sem ficheiros) ============
 // Som de piano simples: algumas harmónicas que se apagam depressa, as agudas mais depressa
@@ -144,8 +166,8 @@ function audio() {
 // Sem hold a nota soa como com o pedal de sustain carregado: apaga-se devagar ao longo de uns 8 segundos
 const SUSTAIN = 8;
 const voices = [];
-function play(st, hold) {
-  const c = audio(), t = c.currentTime, f = freqOf(st);
+function play(m, hold) {
+  const c = audio(), t = c.currentTime, f = freqOf(m);
   const len = hold || SUSTAIN;
   const out = c.createGain();
   out.gain.setValueAtTime(0, t);
@@ -195,23 +217,23 @@ const nowEl = document.getElementById('now');
 const autoBtn = document.getElementById('auto');
 const autoLabel = document.getElementById('autoLabel');
 const statusEl = document.getElementById('status');
-const nameOf = st => NOTES.find(x => x[1] === st)[0] + (octave + Math.floor(st / 12));
 let last = null;
 
-function flash(st) {
-  const k = keysEl.querySelector(`[data-st="${st}"]`);
+function flash(m) {
+  const k = keysEl.querySelector(`[data-m="${m}"]`);
   if (!k) return;
   k.classList.add('down');
   clearTimeout(k._t);
   k._t = setTimeout(() => k.classList.remove('down'), 180);
 }
-function hit(st) {
-  last = st;
-  // Com o autoplay ligado, tocar numa tecla faz o autoplay continuar a partir dessa nota
-  if (autoTimer) { autoPos = st; autoStep(); return; }
-  try { play(st); } catch (e) {}
-  flash(st);
-  nowEl.textContent = nameOf(st);
+function hit(m) {
+  // Com o autoplay ligado, tocar numa nota da escala faz o autoplay continuar a partir dela;
+  // uma nota fora da escala toca por cima sem mexer no autoplay
+  if (autoTimer && SCALE.includes(m - root)) { autoIdx = SCALE.indexOf(m - root); autoStep(); return; }
+  last = m;
+  try { play(m); } catch (e) {}
+  flash(m);
+  nowEl.textContent = nameOf(m);
 }
 
 // pointerdown em vez de click: o som sai logo ao tocar, sem esperar que se levante o dedo
@@ -219,51 +241,56 @@ keysEl.addEventListener('pointerdown', e => {
   const k = e.target.closest('.key');
   if (!k) return;
   e.preventDefault();
-  hit(Number(k.dataset.st));
+  hit(Number(k.dataset.m));
 });
 // Enter / espaço quando a tecla está selecionada com o teclado
 keysEl.addEventListener('keydown', e => {
   const k = e.target.closest('.key');
-  if (k && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); hit(Number(k.dataset.st)); }
+  if (k && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); hit(Number(k.dataset.m)); }
 });
-// Teclado do computador: A W S E D F T G Y H U J K
+// Teclado do computador: A W S E D F T G Y H U J K, e Z / X para descer / subir a escala
 document.addEventListener('keydown', e => {
   if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.('input')) return;
-  if (e.key.toLowerCase() === 'z') { e.preventDefault(); setOctave(octave - 1); return; }
-  if (e.key.toLowerCase() === 'x') { e.preventDefault(); setOctave(octave + 1); return; }
-  const n = NOTES.find(x => x[3] === e.key.toLowerCase());
-  if (n) { e.preventDefault(); hit(n[1]); }
+  const key = e.key.toLowerCase();
+  if (key === 'z') { e.preventDefault(); setRoot(root - 1); return; }
+  if (key === 'x') { e.preventDefault(); setRoot(root + 1); return; }
+  const off = KB.indexOf(key);
+  if (off >= 0) { e.preventDefault(); hit(root + off); }
 });
 
 // ============ AUTOPLAY ============
-// Escala completa em vai-e-vem: C, C♯ ... C′ e depois C′, B ... C, sem repetir as pontas; 5 segundos por nota
+// Escala maior em vai-e-vem: sobe da tónica à tónica de cima e volta a descer, sem repetir as pontas; 5 segundos por nota
 const NOTE_SECONDS = 5;
-let autoTimer = null, autoPos = 0, autoDir = 1;
-function mark(st) {
+// autoIdx = posição na escala da próxima nota a tocar; autoCur = a que está a tocar agora
+let autoTimer = null, autoIdx = 0, autoCur = 0, autoDir = 1;
+function mark(m) {
   keysEl.querySelectorAll('.on').forEach(k => k.classList.remove('on'));
-  if (st !== null) keysEl.querySelector(`[data-st="${st}"]`)?.classList.add('on');
+  if (m !== null) keysEl.querySelector(`[data-m="${m}"]`)?.classList.add('on');
 }
 // Toca a nota atual e marca a seguinte para daqui a 5 segundos
 function autoStep() {
   clearTimeout(autoTimer);
   stopHeld();
-  const st = autoPos;
-  try { play(st, NOTE_SECONDS); } catch (e) {}
-  mark(st);
-  last = st;
-  nowEl.textContent = nameOf(st);
-  if (st === 12) autoDir = -1;
-  if (st === 0) autoDir = 1;
+  autoCur = autoIdx;
+  const m = root + SCALE[autoCur];
+  try { play(m, NOTE_SECONDS); } catch (e) {}
+  mark(m);
+  last = m;
+  nowEl.textContent = nameOf(m);
+  if (autoCur === SCALE.length - 1) autoDir = -1;
+  if (autoCur === 0) autoDir = 1;
   statusEl.textContent = autoDir > 0 ? 'Going up' : 'Going down';
-  autoPos = st + autoDir;
+  autoIdx = autoCur + autoDir;
   autoTimer = setTimeout(autoStep, NOTE_SECONDS * 1000);
 }
 function setAuto(on) {
   autoBtn.setAttribute('aria-pressed', on);
   autoLabel.textContent = on ? 'Stop autoplay' : 'Autoplay';
   if (on) {
-    // Começa na última nota tocada (ou no C) e sobe
-    autoPos = last ?? 0; autoDir = autoPos === 12 ? -1 : 1;
+    // Começa na última nota tocada se estiver dentro da escala (uma de fora passa para a nota da escala logo acima), senão na tónica, e sobe
+    const off = last === null ? -1 : last - root;
+    autoIdx = off >= 0 && off <= 12 ? SCALE.findIndex(x => x >= off) : 0;
+    autoDir = autoIdx === SCALE.length - 1 ? -1 : 1;
     autoTimer = 1;   // marca como ligado antes do primeiro passo
     autoStep();
   } else {
@@ -274,26 +301,28 @@ function setAuto(on) {
 }
 autoBtn.addEventListener('click', () => setAuto(autoBtn.getAttribute('aria-pressed') !== 'true'));
 
-// ============ OITAVA ============
-const octDown = document.getElementById('octDown'), octUp = document.getElementById('octUp');
-const octLabel = document.getElementById('octLabel');
-function setOctave(n) {
-  n = Math.max(OCT_MIN, Math.min(OCT_MAX, n));
-  if (n === octave) return;
-  octave = n;
-  showOctave();
-  // Com o autoplay ligado, a nota atual passa logo para a oitava nova
-  if (autoTimer) { autoPos = last; autoStep(); }
-  else if (last !== null) nowEl.textContent = nameOf(last);
+// ============ SUBIR / DESCER A ESCALA ============
+const rootDown = document.getElementById('rootDown'), rootUp = document.getElementById('rootUp');
+const rootLabel = document.getElementById('rootLabel');
+function setRoot(n) {
+  n = Math.max(ROOT_MIN, Math.min(ROOT_MAX, n));
+  if (n === root) return;
+  root = n;
+  drawKeys();
+  showRoot();
+  // Com o autoplay ligado, continua no mesmo grau da escala, já na escala nova
+  if (autoTimer) { autoIdx = autoCur; autoStep(); }
 }
-function showOctave() {
-  octLabel.querySelector('b').textContent = `C${octave}–C${octave + 1}`;
-  octDown.disabled = octave <= OCT_MIN;
-  octUp.disabled = octave >= OCT_MAX;
+function showRoot() {
+  rootLabel.querySelector('b').textContent = `${pitchOf(root)} major`;
+  rootLabel.querySelector('small').textContent = `${nameOf(root)}–${nameOf(root + 12)}`;
+  rootDown.disabled = root <= ROOT_MIN;
+  rootUp.disabled = root >= ROOT_MAX;
 }
-octDown.addEventListener('click', () => setOctave(octave - 1));
-octUp.addEventListener('click', () => setOctave(octave + 1));
-showOctave();
+rootDown.addEventListener('click', () => setRoot(root - 1));
+rootUp.addEventListener('click', () => setRoot(root + 1));
+drawKeys();
+showRoot();
 
 // Funcionar sem internet depois da primeira visita (só na versão instalável)
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
