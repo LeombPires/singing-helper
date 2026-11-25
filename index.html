@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Singing helper</title>
+<meta name="theme-color" content="#141012">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Singing helper">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: quiet, a small instrument on a table
+   IDEA: the keybed of an upright piano, lid open, red felt strip above the keys
+   PICTURE: the keyboard itself, large, in a black lacquer case
+   COLOUR and TYPE: lacquer black, ivory keys, felt red accent; Fraunces for the name, Inter for labels
+   LAYOUT: modest title, the keyboard filling the width, repeat control under it */
+:root{color-scheme:light dark;
+  --bg:light-dark(#efe9df,#16110e);--ink:light-dark(#221a14,#efe6da);--muted:light-dark(#6f6255,#a8998a);
+  --case:#141012;--case-edge:#2b2427;--felt:#9b1d24;--ivory:#fbf7ee;--ivory-down:#e7dcc6;--ebony:#16131a;--ebony-down:#3a3340;
+  --accent:#c4262f}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip;
+  min-height:100vh;display:flex;flex-direction:column;justify-content:center;-webkit-tap-highlight-color:transparent}
+main{width:100%;max-width:980px;margin:0 auto;padding:clamp(20px,4vw,48px) max(4vw,12px)}
+h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(32px,6vw,48px);line-height:1.05;margin:0 0 4px;text-wrap:balance}
+.sub{margin:0 0 22px;color:var(--muted)}
+
+/* Caixa do piano: laca preta com a faixa de feltro vermelho por cima das teclas */
+.case{background:linear-gradient(180deg,#221c1f,var(--case) 40%);border:1px solid var(--case-edge);border-radius:18px;
+  padding:18px clamp(8px,2vw,18px) clamp(14px,2.4vw,22px);box-shadow:0 24px 40px -24px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.08)}
+.now{display:flex;align-items:baseline;justify-content:space-between;gap:12px;color:#d9cfc2;padding:0 6px 12px;font-size:14px}
+.now b{font-family:Fraunces,Georgia,serif;font-size:28px;line-height:1;color:#fff;font-weight:600;min-width:2.4em}
+.felt{height:10px;background:linear-gradient(180deg,#b3252d,var(--felt));border-radius:3px 3px 0 0}
+
+/* Teclas: 8 brancas (C a C) e 5 pretas por cima */
+.keys{position:relative;height:clamp(200px,42vw,320px);display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:3px;
+  touch-action:none;user-select:none;-webkit-user-select:none}
+.key{position:relative;border:0;padding:0 0 12px;font:inherit;cursor:pointer;display:flex;align-items:flex-end;justify-content:center}
+.white{background:linear-gradient(180deg,#ebe3d3 0,var(--ivory) 10%,var(--ivory) 88%,#e9dfcb);color:#6d5f50;border-radius:0 0 8px 8px;
+  box-shadow:inset 0 -6px 0 #d8ccb5,0 2px 0 rgba(0,0,0,.4);font-weight:600;font-size:15px;transition:transform .05s}
+.white.down{background:var(--ivory-down);box-shadow:inset 0 -2px 0 #cdbfa5,0 1px 0 rgba(0,0,0,.4);transform:translateY(2px);color:var(--accent)}
+.black{position:absolute;top:0;height:60%;width:calc(100% / 8 * .6);z-index:2;background:linear-gradient(180deg,#2c2730,var(--ebony) 70%,#0c0a0e);
+  border-radius:0 0 6px 6px;color:#bfb4c6;font-size:12px;font-weight:500;padding-bottom:10px;
+  box-shadow:inset 0 -8px 0 #000,inset 1px 0 0 rgba(255,255,255,.08),0 3px 4px rgba(0,0,0,.45);transition:transform .05s}
+.black.down{background:var(--ebony-down);box-shadow:inset 0 -3px 0 #000,0 1px 2px rgba(0,0,0,.4);transform:translateY(2px);color:#fff}
+.key:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+.key .kb{display:block;font-size:11px;font-weight:400;opacity:.55;margin-top:2px}
+.key span{display:flex;flex-direction:column;align-items:center;line-height:1.1;pointer-events:none}
+
+/* Controlos por baixo */
+.controls{display:flex;align-items:center;gap:14px 20px;flex-wrap:wrap;margin-top:22px}
+.repeat{display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:10px 22px 10px 16px;border-radius:99px;
+  border:2px solid var(--ink);background:transparent;color:var(--ink);font:600 16px Inter,system-ui,sans-serif;cursor:pointer}
+.repeat svg{width:22px;height:22px}
+.repeat[aria-pressed=true]{background:var(--accent);border-color:var(--accent);color:#fff}
+.repeat:disabled{opacity:.4;cursor:not-allowed}
+.repeat:focus-visible,.speed input:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.speed{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:15px}
+.speed input{width:140px;accent-color:var(--accent)}
+.speed output{min-width:3.2em;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.hint{margin:16px 0 0;color:var(--muted);font-size:14px}
+@media (hover:none){.key .kb,.hint .kbd{display:none}}
+@media (prefers-reduced-motion:reduce){.key{transition:none}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Singing helper</h1>
+  <p class="sub">Find your note: one octave, C to C. Tap a key to hear it.</p>
+
+  <div class="case">
+    <div class="now"><span>Last note</span><b id="now" aria-live="polite">–</b></div>
+    <div class="felt"></div>
+    <div class="keys" id="keys"></div>
+  </div>
+
+  <div class="controls">
+    <button class="repeat" id="repeat" aria-pressed="false" disabled>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l4 4-4 4"/><path d="M3 11V9a3 3 0 0 1 3-3h15"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a3 3 0 0 1-3 3H3"/></svg>
+      <span id="repeatLabel">Repeat</span>
+    </button>
+    <label class="speed">Every
+      <input type="range" id="speed" min="0.5" max="3" step="0.25" value="1.5">
+      <output id="speedOut">1.5 s</output>
+    </label>
+  </div>
+  <p class="hint">Press a key first, then Repeat to keep hearing that note. <span class="kbd">On a computer you can also play with A W S E D F T G Y H U J K.</span></p>
+</main>
+
+<script>
+{
+// Notas da oitava: nome, semitons acima do C4, branca ou preta, tecla do computador
+const NOTES = [
+  ['C', 0, 'w', 'a'], ['C♯', 1, 'b', 'w'], ['D', 2, 'w', 's'], ['D♯', 3, 'b', 'e'], ['E', 4, 'w', 'd'],
+  ['F', 5, 'w', 'f'], ['F♯', 6, 'b', 't'], ['G', 7, 'w', 'g'], ['G♯', 8, 'b', 'y'], ['A', 9, 'w', 'h'],
+  ['A♯', 10, 'b', 'u'], ['B', 11, 'w', 'j'], ['C', 12, 'w', 'k'],
+];
+const C4 = 261.63;
+const freqOf = st => C4 * 2 ** (st / 12);
+
+// Desenhar as teclas: as pretas ficam por cima, entre as brancas
+const keysEl = document.getElementById('keys');
+let whiteIndex = 0;
+keysEl.innerHTML = NOTES.map(([name, st, kind, kb]) => {
+  const label = `<span>${name}${st === 12 ? '<sup>′</sup>' : ''}<small class="kb">${kb.toUpperCase()}</small></span>`;
+  if (kind === 'w') { whiteIndex++; return `<button class="key white" data-st="${st}" aria-label="${name}${st === 12 ? ' (high)' : ''}">${label}</button>`; }
+  // a preta fica centrada na junta entre a branca anterior e a seguinte
+  const left = `calc(100% / 8 * ${whiteIndex} - (100% / 8 * .3))`;
+  return `<button class="key black" data-st="${st}" style="left:${left}" aria-label="${name}">${label}</button>`;
+}).join('');
+
+// ============ SOM (Web Audio, sem ficheiros) ============
+// Som de piano simples: algumas harmónicas que se apagam depressa, as agudas mais depressa
+let ctx = null, master = null;
+function audio() {
+  if (!ctx) {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createDynamicsCompressor();
+    master.connect(ctx.destination);
+  }
+  if (ctx.state === 'suspended') ctx.resume();
+  return ctx;
+}
+function play(st) {
+  const c = audio(), t = c.currentTime, f = freqOf(st);
+  const out = c.createGain();
+  out.gain.setValueAtTime(0, t);
+  out.gain.linearRampToValueAtTime(0.5, t + 0.006);
+  out.gain.exponentialRampToValueAtTime(0.18, t + 0.35);
+  out.gain.exponentialRampToValueAtTime(0.001, t + 2.2);
+  out.connect(master);
+  [[1, 1], [2, .45], [3, .22], [4, .12], [5, .06]].forEach(([h, v]) => {
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = h === 1 ? 'triangle' : 'sine';
+    o.frequency.value = f * h * (1 + (h - 1) * 0.0008);   // leve desafinação das harmónicas, soa menos a apito
+    g.gain.setValueAtTime(v, t);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + 2.2 / h);
+    o.connect(g).connect(out);
+    o.start(t); o.stop(t + 2.3);
+  });
+}
+
+// ============ TOCAR E MOSTRAR ============
+const nowEl = document.getElementById('now');
+const repeatBtn = document.getElementById('repeat');
+const repeatLabel = document.getElementById('repeatLabel');
+let last = null;
+
+function flash(st) {
+  const k = keysEl.querySelector(`[data-st="${st}"]`);
+  if (!k) return;
+  k.classList.add('down');
+  clearTimeout(k._t);
+  k._t = setTimeout(() => k.classList.remove('down'), 180);
+}
+function hit(st) {
+  try { play(st); } catch (e) {}
+  flash(st);
+  last = st;
+  const n = NOTES.find(x => x[1] === st);
+  nowEl.textContent = n[0] + (st === 12 ? '′' : '');
+  repeatBtn.disabled = false;
+  // Se o repetir está ligado, passa a repetir a nota nova a partir de agora
+  if (timer) restartTimer();
+}
+
+// pointerdown em vez de click: o som sai logo ao tocar, sem esperar que se levante o dedo
+keysEl.addEventListener('pointerdown', e => {
+  const k = e.target.closest('.key');
+  if (!k) return;
+  e.preventDefault();
+  hit(Number(k.dataset.st));
+});
+// Enter / espaço quando a tecla está selecionada com o teclado
+keysEl.addEventListener('keydown', e => {
+  const k = e.target.closest('.key');
+  if (k && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); hit(Number(k.dataset.st)); }
+});
+// Teclado do computador: A W S E D F T G Y H U J K
+document.addEventListener('keydown', e => {
+  if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || e.target.matches('input')) return;
+  const n = NOTES.find(x => x[3] === e.key.toLowerCase());
+  if (n) { e.preventDefault(); hit(n[1]); }
+});
+
+// ============ REPETIR ============
+// Liga e desliga; enquanto está ligado toca a última nota a cada X segundos
+const speed = document.getElementById('speed'), speedOut = document.getElementById('speedOut');
+let timer = null;
+const every = () => Number(speed.value) * 1000;
+function restartTimer() {
+  clearInterval(timer);
+  timer = setInterval(() => { if (last !== null) { try { play(last); } catch (e) {} flash(last); } }, every());
+}
+function setRepeat(on) {
+  repeatBtn.setAttribute('aria-pressed', on);
+  repeatLabel.textContent = on ? 'Stop repeating' : 'Repeat';
+  if (on) { restartTimer(); } else { clearInterval(timer); timer = null; }
+}
+repeatBtn.addEventListener('click', () => {
+  if (last === null) return;
+  const on = repeatBtn.getAttribute('aria-pressed') !== 'true';
+  if (on) { try { play(last); } catch (e) {} flash(last); }
+  setRepeat(on);
+});
+speed.addEventListener('input', () => {
+  speedOut.textContent = `${speed.value} s`;
+  if (timer) restartTimer();
+});
+
+// Funcionar sem internet depois da primeira visita (só na versão instalável)
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+}
+</script>
+</body>
+</html>
