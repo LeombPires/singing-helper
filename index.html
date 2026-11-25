@@ -285,7 +285,6 @@ function setOctave(n) {
   if (n === octave) return;
   octave = n;
   showOctave();
-  try { localStorage.setItem('singing-helper:octave', n); } catch (e) {}
   // Com o autoplay ligado, a nota atual passa logo para a oitava nova
   if (autoTimer) { autoPos = last; autoStep(); }
   else if (last !== null) nowEl.textContent = nameOf(last);
@@ -297,8 +296,6 @@ function showOctave() {
 }
 octDown.addEventListener('click', () => setOctave(octave - 1));
 octUp.addEventListener('click', () => setOctave(octave + 1));
-// Lembrar a oitava da última vez
-try { const saved = Number(localStorage.getItem('singing-helper:octave')); if (saved >= OCT_MIN && saved <= OCT_MAX) octave = saved; } catch (e) {}
 showOctave();
 
 // Funcionar sem internet depois da primeira visita (só na versão instalável)
