@@ -2,9 +2,10 @@
 
 A one-octave piano (C to the next C) to find a note and hold it while singing.
 
-- Tap a key to hear the note.
+- Tap a key to hear the note. Notes ring on for several seconds, like with the sustain pedal down.
+- **−** and **+** move the keyboard down or up an octave (C2 to C7).
 - **Autoplay** plays the whole scale up from C to the high C and back down, 5 seconds per note, until stopped. Tapping a key while it plays continues from that note.
-- On a computer the keys A W S E D F T G Y H U J K play the notes too.
+- On a computer the keys A W S E D F T G Y H U J K play the notes too, and Z / X change octave.
 
 Works offline once opened, and can be installed on a phone:
 - **iPhone (Safari):** Share → "Add to Home Screen".

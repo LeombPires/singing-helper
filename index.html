@@ -63,6 +63,16 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(32px,6vw,4
 .repeat:disabled{opacity:.4;cursor:not-allowed}
 .repeat:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 .status{color:var(--muted);font-size:15px}
+/* Oitava: − C4–C5 + */
+.octave{display:inline-flex;align-items:center;gap:6px;margin-left:auto}
+.octave button{width:48px;height:48px;border-radius:50%;border:2px solid var(--ink);background:transparent;color:var(--ink);
+  font:600 24px/1 Inter,system-ui,sans-serif;cursor:pointer;display:grid;place-items:center}
+.octave button:disabled{opacity:.3;cursor:not-allowed}
+.octave button:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.octave output{min-width:5.6em;text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}
+.octave output b{display:block;font-family:Fraunces,Georgia,serif;font-size:22px;line-height:1.1}
+.octave output small{color:var(--muted);font-size:13px}
+@media (max-width:600px){.octave{margin-left:0}}
 /* Nota que o autoplay está a tocar: fica marcada durante os 5 segundos */
 .white.on{background:var(--ivory-down);color:var(--accent);box-shadow:inset 0 -6px 0 var(--accent),0 2px 0 rgba(0,0,0,.4)}
 .black.on{background:var(--ebony-down);color:#fff;box-shadow:inset 0 -6px 0 var(--accent),0 3px 4px rgba(0,0,0,.45)}
@@ -88,20 +98,27 @@ h1{font-family:Fraunces,Georgia,serif;font-weight:600;font-size:clamp(32px,6vw,4
       <span id="autoLabel">Autoplay</span>
     </button>
     <span class="status" id="status" aria-live="polite"></span>
+    <div class="octave" role="group" aria-label="Octave">
+      <button id="octDown" aria-label="One octave lower">−</button>
+      <output id="octLabel" aria-live="polite"><b>C4–C5</b><small>octave</small></output>
+      <button id="octUp" aria-label="One octave higher">+</button>
+    </div>
   </div>
-  <p class="hint">Autoplay goes up the scale from C to the high C and back down, 5 seconds per note, until you stop it. Tap a key while it plays to continue from that note. <span class="kbd">On a computer you can also play with A W S E D F T G Y H U J K.</span></p>
+  <p class="hint">Autoplay goes up the scale from C to the high C and back down, 5 seconds per note, until you stop it. Tap a key while it plays to continue from that note. Use − and + to move the keyboard down or up an octave. <span class="kbd">On a computer you can also play with A W S E D F T G Y H U J K, and change octave with Z and X.</span></p>
 </main>
 
 <script>
 {
-// Notas da oitava: nome, semitons acima do C4, branca ou preta, tecla do computador
+// Notas da oitava: nome, semitons acima do C da oitava escolhida, branca ou preta, tecla do computador
 const NOTES = [
   ['C', 0, 'w', 'a'], ['C♯', 1, 'b', 'w'], ['D', 2, 'w', 's'], ['D♯', 3, 'b', 'e'], ['E', 4, 'w', 'd'],
   ['F', 5, 'w', 'f'], ['F♯', 6, 'b', 't'], ['G', 7, 'w', 'g'], ['G♯', 8, 'b', 'y'], ['A', 9, 'w', 'h'],
   ['A♯', 10, 'b', 'u'], ['B', 11, 'w', 'j'], ['C', 12, 'w', 'k'],
 ];
-const C4 = 261.63;
-const freqOf = st => C4 * 2 ** (st / 12);
+// Oitava escolhida com − e +: 4 quer dizer C4 a C5 (o C central do piano). Vai de C2 a C7
+const C4 = 261.63, OCT_MIN = 2, OCT_MAX = 6;
+let octave = 4;
+const freqOf = st => C4 * 2 ** (octave - 4 + st / 12);
 
 // Desenhar as teclas: as pretas ficam por cima, entre as brancas
 const keysEl = document.getElementById('keys');
@@ -127,28 +144,34 @@ function audio() {
   return ctx;
 }
 // hold = segundos que a nota fica a soar (o autoplay usa notas longas para dar tempo de cantar)
+// Sem hold a nota soa como com o pedal de sustain carregado: apaga-se devagar ao longo de uns 8 segundos
+const SUSTAIN = 8;
 const voices = [];
 function play(st, hold) {
   const c = audio(), t = c.currentTime, f = freqOf(st);
-  const len = hold || 2.2;
+  const len = hold || SUSTAIN;
   const out = c.createGain();
   out.gain.setValueAtTime(0, t);
   out.gain.linearRampToValueAtTime(0.5, t + 0.006);
-  out.gain.exponentialRampToValueAtTime(0.18, t + 0.35);
+  out.gain.exponentialRampToValueAtTime(0.2, t + 0.35);
   if (hold) {
     // Fica num nível estável e apaga-se só no fim
     out.gain.exponentialRampToValueAtTime(0.14, t + len - 0.4);
     out.gain.exponentialRampToValueAtTime(0.001, t + len);
-  } else out.gain.exponentialRampToValueAtTime(0.001, t + len);
+  } else {
+    // Pedal: desce devagar e só no fim se apaga de vez
+    out.gain.exponentialRampToValueAtTime(0.06, t + len * 0.6);
+    out.gain.exponentialRampToValueAtTime(0.001, t + len);
+  }
   out.connect(master);
   const oscs = [[1, 1], [2, .45], [3, .22], [4, .12], [5, .06]].map(([h, v]) => {
     const o = c.createOscillator(), g = c.createGain();
     o.type = h === 1 ? 'triangle' : 'sine';
     o.frequency.value = f * h * (1 + (h - 1) * 0.0008);   // leve desafinação das harmónicas, soa menos a apito
     g.gain.setValueAtTime(v, t);
-    // Nas notas longas as harmónicas descem até um nível baixo em vez de desaparecerem
+    // As harmónicas descem até um nível baixo em vez de desaparecerem, para a nota continuar a soar
     if (hold) g.gain.exponentialRampToValueAtTime(Math.max(v * 0.25, 0.01), t + 1.2 / h);
-    else g.gain.exponentialRampToValueAtTime(0.0005, t + 2.2 / h);
+    else g.gain.exponentialRampToValueAtTime(Math.max(v * 0.15, 0.006), t + 3 / h);
     o.connect(g).connect(out);
     o.start(t); o.stop(t + len + 0.1);
     return o;
@@ -175,7 +198,7 @@ const nowEl = document.getElementById('now');
 const autoBtn = document.getElementById('auto');
 const autoLabel = document.getElementById('autoLabel');
 const statusEl = document.getElementById('status');
-const nameOf = st => NOTES.find(x => x[1] === st)[0] + (st === 12 ? '′' : '');
+const nameOf = st => NOTES.find(x => x[1] === st)[0] + (octave + Math.floor(st / 12));
 let last = null;
 
 function flash(st) {
@@ -208,7 +231,9 @@ keysEl.addEventListener('keydown', e => {
 });
 // Teclado do computador: A W S E D F T G Y H U J K
 document.addEventListener('keydown', e => {
-  if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || e.target.matches('input')) return;
+  if (e.repeat || e.metaKey || e.ctrlKey || e.altKey || e.target.closest?.('input')) return;
+  if (e.key.toLowerCase() === 'z') { e.preventDefault(); setOctave(octave - 1); return; }
+  if (e.key.toLowerCase() === 'x') { e.preventDefault(); setOctave(octave + 1); return; }
   const n = NOTES.find(x => x[3] === e.key.toLowerCase());
   if (n) { e.preventDefault(); hit(n[1]); }
 });
@@ -251,6 +276,30 @@ function setAuto(on) {
   }
 }
 autoBtn.addEventListener('click', () => setAuto(autoBtn.getAttribute('aria-pressed') !== 'true'));
+
+// ============ OITAVA ============
+const octDown = document.getElementById('octDown'), octUp = document.getElementById('octUp');
+const octLabel = document.getElementById('octLabel');
+function setOctave(n) {
+  n = Math.max(OCT_MIN, Math.min(OCT_MAX, n));
+  if (n === octave) return;
+  octave = n;
+  showOctave();
+  try { localStorage.setItem('singing-helper:octave', n); } catch (e) {}
+  // Com o autoplay ligado, a nota atual passa logo para a oitava nova
+  if (autoTimer) { autoPos = last; autoStep(); }
+  else if (last !== null) nowEl.textContent = nameOf(last);
+}
+function showOctave() {
+  octLabel.querySelector('b').textContent = `C${octave}–C${octave + 1}`;
+  octDown.disabled = octave <= OCT_MIN;
+  octUp.disabled = octave >= OCT_MAX;
+}
+octDown.addEventListener('click', () => setOctave(octave - 1));
+octUp.addEventListener('click', () => setOctave(octave + 1));
+// Lembrar a oitava da última vez
+try { const saved = Number(localStorage.getItem('singing-helper:octave')); if (saved >= OCT_MIN && saved <= OCT_MAX) octave = saved; } catch (e) {}
+showOctave();
 
 // Funcionar sem internet depois da primeira visita (só na versão instalável)
 if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
